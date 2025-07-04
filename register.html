@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PikaChaat – Register</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom, #ffe082, #fff9c4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    h1 {
+      color: #f57f17;
+    }
+
+    form {
+      background: #fff8e1;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      width: 300px;
+    }
+
+    input {
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+
+    button {
+      background: #ffd54f;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #ffca28;
+    }
+  </style>
+</head>
+<body>
+  <h1>⚡ Register for PikaChaat</h1>
+  <form id="registerForm">
+    <input type="text" id="username" placeholder="Username (e.g. VoltZeke)" required>
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <button type="submit">Register</button>
+  </form>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyByNBANQIZOunz4rtbOyb2H5lF9vtDavWs",
+      authDomain: "pikachat-42272.firebaseapp.com",
+      projectId: "pikachat-42272",
+      storageBucket: "pikachat-42272.appspot.com",
+      messagingSenderId: "762656745037",
+      appId: "1:762656745037:web:8afe6f98e1603cdc6c5e04",
+      databaseURL: "https://pikachat-42272-default-rtdb.firebaseio.com/"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    const form = document.getElementById("registerForm");
+
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const username = document.getElementById("username").value;
+
+      createUserWithEmailAndPassword(auth, email, password)
+        .then(userCredential => {
+          const uid = userCredential.user.uid;
+          set(ref(db, "users/" + uid), {
+            email: email,
+            username: username
+          });
+          alert("⚡ Registered as " + username);
+          window.location.href = "chat.html";
+        })
+        .catch(error => {
+          alert("❌ " + error.message);
+        });
+    });
+  </script>
+</body>
+</html>

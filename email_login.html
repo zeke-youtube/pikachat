@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login – PikaChaat</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to top, #fce4ec, #fff176);
+      text-align: center;
+      padding-top: 12vh;
+      margin: 0;
+    }
+
+    input, button {
+      padding: 10px;
+      font-size: 1rem;
+      margin: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      width: 250px;
+    }
+
+    button {
+      background: #ffeb3b;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #fdd835;
+    }
+
+    a {
+      display: block;
+      margin-top: 10px;
+      color: #333;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h2>🔐 PikaChaat Login</h2>
+  <input type="email" id="email" placeholder="Email">
+  <br>
+  <input type="password" id="password" placeholder="Password">
+  <br>
+  <button id="loginBtn">Login</button>
+  <a id="resetLink">Forgot your password?</a>
+  <a href="register.html">Don’t have an account yet?</a>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyByNBANQIZOunz4rtbOyb2H5lF9vtDavWs",
+      authDomain: "pikachat-42272.firebaseapp.com",
+      projectId: "pikachat-42272",
+      storageBucket: "pikachat-42272.firebasestorage.app",
+      messagingSenderId: "762656745037",
+      appId: "1:762656745037:web:8afe6f98e1603cdc6c5e04",
+      measurementId: "G-DB3MYC43VW"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    document.getElementById("loginBtn").addEventListener("click", () => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      signInWithEmailAndPassword(auth, email, password)
+        .then(userCred => {
+          alert("✅ Logged in as " + userCred.user.email);
+          window.location.href = "chat.html";
+        })
+        .catch(err => {
+          alert("❌ Error: " + err.message);
+        });
+    });
+
+    document.getElementById("resetLink").addEventListener("click", () => {
+      const email = document.getElementById("email").value;
+      if (!email) {
+        alert("⚠️ Please enter your email first.");
+        return;
+      }
+
+      sendPasswordResetEmail(auth, email)
+        .then(() => {
+          alert("📧 Password reset email sent! Check your inbox.");
+        })
+        .catch(err => {
+          alert("❌ Error: " + err.message);
+        });
+    });
+  </script>
+</body>
+</html>
