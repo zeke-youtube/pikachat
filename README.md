@@ -17,7 +17,7 @@ pika chat is a free texting software without ads
 
 ## 🧠 Creator
 
-Made with ⚡ and brainpower by **Zeke**  
+Made with ⚡copliot⚡ and brainpower by **Zeke**  
 YouTube: [@ilikeyoutube796](https://www.youtube.com/@ilikeyoutube796)
 
 ---
