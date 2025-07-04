@@ -1,158 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>PikaChaat – Chat</title>
+  <meta charset="UTF-8">
+  <title>PikaChaat</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
       margin: 0;
       background: linear-gradient(to bottom, #fff176, #ffe0b2);
-      display: flex;
       height: 100vh;
     }
 
-    #sidebar {
-      width: 0px;
-      background: #fff9c4;
-      border-right: 2px solid #fbc02d;
-      padding: 12px;
-      overflow-y: auto;
-    }
-
-    #sidebar h3 {
-      margin-top: 0;
-      font-size: 1.3rem;
-    }
-
-    #onlineUsers {
-      font-size: 1.15rem;
-      list-style: none;
-      padding-left: 0;
-    }
-
-    #onlineUsers li {
-      margin-bottom: 10px;
-      font-weight: bold;
-    }
-
     #chatContainer {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    header {
-      background: #ffeb3b;
-      padding: 12px;
-      font-size: 1.2rem;
-      font-weight: bold;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    #logoutBtn {
-      background: #f44336;
-      color: white;
-      padding: 6px 12px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.9rem;
-    }
-
-    #channelSelector {
-      padding: 10px;
-      background: #fff9c4;
-      border-bottom: 2px solid #fbc02d;
+      padding: 20px;
+      max-width: 800px;
+      margin: auto;
     }
 
     #messages {
-      flex: 1;
+      border: 2px solid #ccc;
+      height: 400px;
+      overflow-y: scroll;
       padding: 10px;
-      overflow-y: auto;
-      background: #fffde7;
+      background-color: #fff8dc;
+      border-radius: 10px;
     }
 
-    .bubble {
-      background: #ffecb3;
-      border-radius: 12px;
-      padding: 8px 14px;
-      margin: 8px 0;
-      max-width: 75%;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-
-    .sender {
-      font-weight: bold;
-      margin-bottom: 4px;
-    }
-
-    .timestamp {
-      font-size: 0.75rem;
-      color: #888;
-      text-align: right;
-      margin-top: 4px;
-    }
-
-    #inputBar {
-      display: flex;
+    #messageInput {
+      width: calc(100% - 80px);
       padding: 10px;
-      background: #fff9c4;
-      border-top: 2px solid #fbc02d;
-    }
-
-    input[type="text"] {
-      flex: 1;
-      padding: 10px;
-      font-size: 1rem;
-      border-radius: 8px;
+      font-size: 16px;
+      border-radius: 5px;
       border: 1px solid #ccc;
     }
 
-    button {
-      margin-left: 10px;
+    #sendBtn {
+      width: 60px;
       padding: 10px;
-      font-size: 1rem;
-      border-radius: 8px;
+      background-color: #fdd835;
       border: none;
-      background: #ffeb3b;
-      cursor: pointer;
+      border-radius: 5px;
+      font-weight: bold;
     }
 
-    button:hover {
-      background: #fdd835;
+    .messageWrapper {
+      margin-bottom: 10px;
+    }
+
+    .senderTag {
+      font-weight: bold;
+    }
+
+    .textTag {
+      margin-left: 10px;
+    }
+
+    .timeTag {
+      float: right;
+      font-size: 12px;
+      color: #888;
     }
   </style>
 </head>
 <body>
-  <div id="sidebar">
-    <h3>🟢 Online Users</h3>
-    <ul id="onlineUsers"></ul>
-  </div>
-
   <div id="chatContainer">
-    <header>
-      ⚡ PikaChaat Room
-      <button id="logoutBtn">Logout</button>
-    </header>
-
-    <div id="channelSelector">
-      <label for="channel">Channel:</label>
-      <select id="channel">
-        <option value="chat">Chat 1</option>
-        <option value="chat2">Chat 2</option>
-        <option value="owner">Owner Room</option>
-      </select>
-    </div>
-
+    <h2>⚡ PikaChaat</h2>
     <div id="messages"></div>
-
-    <div id="inputBar">
-      <input type="text" id="messageInput" placeholder="Type your message...">
-      <button id="sendBtn">Send</button>
-    </div>
+    <input type="text" id="messageInput" placeholder="Type your message...">
+    <button id="sendBtn">Send</button>
   </div>
 
   <script type="module">
@@ -163,129 +78,145 @@
       ref,
       push,
       onChildAdded,
-      get,
       update,
-      onDisconnect,
-      onValue,
-      off
+      onValue
     } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 
     const firebaseConfig = {
-      apiKey: "AIzaSyByNBANQIZOunz4rtbOyb2H5lF9vtDavWs",
-      authDomain: "pikachat-42272.firebaseapp.com",
-      databaseURL: "https://pikachat-42272-default-rtdb.firebaseio.com/",
-      projectId: "pikachat-42272",
-      storageBucket: "pikachat-42272.appspot.com",
-      messagingSenderId: "762656745037",
-      appId: "1:762656745037:web:8afe6f98e1603cdc6c5e04"
+      // your Firebase config
     };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getDatabase(app);
 
-    const messagesDiv = document.getElementById("messages");
+    let currentUsername = "";
+    let currentRole = "";
+    let currentChannel = "chat"; // default channel
+
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        const uid = user.uid;
+        const userRef = ref(db, "users/" + uid);
+        onValue(userRef, snapshot => {
+          const data = snapshot.val();
+          currentUsername = data.username;
+          currentRole = data.role || "user";
+        }, { onlyOnce: true });
+        loadChannelMessages();
+      } else {
+        window.location.href = "login.html";
+      }
+    });
+
     const sendBtn = document.getElementById("sendBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
     const messageInput = document.getElementById("messageInput");
-    const onlineUsersList = document.getElementById("onlineUsers");
-    const channelSelect = document.getElementById("channel");
+    const messagesDiv = document.getElementById("messages");
 
-    let currentUsername = null;
-    let currentRole = "user";
-    let currentChannel = "chat";
-    let listenerRef = null;
-    import { handleCommand } from "./command.js";
+    function handleCommand(text, role) {
+      const parts = text.trim().split(" ");
+      const [cmd, action, target] = parts;
 
-    onAuthStateChanged(auth, async user => {
-      if (!user) {
-        alert("🚫 Not logged in. Redirecting...");
-        window.location.href = "email_login.html";
+      if (cmd !== "/mod") return null;
+      if (role !== "owner") return "🚫 Only owners can use /mod commands.";
+      if (!action || !target) return "⚠️ Usage: /mod [clear|kick|ban] [username]";
+
+      const validActions = ["clear", "kick", "ban"];
+      if (!validActions.includes(action)) return "❌ Invalid action.";
+
+      return { action, target };
+    }
+
+    sendBtn.addEventListener("click", () => {
+      const text = messageInput.value.trim();
+      if (!text) return;
+
+      const result = handleCommand(text, currentRole);
+      if (typeof result === "string") {
+        alert(result);
         return;
       }
 
-      const userRef = ref(db, `users/${user.uid}`);
-      const snapshot = await get(userRef);
-      const userInfo = snapshot.val();
+      if (result?.action === "clear") {
+        const channelsRef = ref(db, "channels");
+        onValue(channelsRef, snapshot => {
+          const channels = snapshot.val();
+          for (const channel in channels) {
+            for (const msgID in channels[channel]) {
+              const msg = channels[channel][msgID];
+              if (msg.sender === result.target) {
+                update(ref(db, `channels/${channel}/${msgID}`), {
+                  text: "🧹 (message removed globally by owner)"
+                });
+              }
+            }
+          }
+        }, { onlyOnce: true });
+        alert(`✅ Cleared messages by ${result.target}`);
+        return;
+      }
 
-      currentUsername = userInfo?.username || user.email;
-      currentRole = (user.email === "zheng.hong.ze.tw@gmail.com" || user.email === "i230206@nehs.tc.edu.tw")
-        ? "owner"
-        : (userInfo?.role || "user");
+      if (result?.action === "kick") {
+        const statusRef = ref(db, "status");
+        onValue(statusRef, snapshot => {
+          const status = snapshot.val();
+          for (const uid in status) {
+            if (status[uid].username === result.target) {
+              update(ref(db, `status/${uid}`), { online: false });
+            }
+          }
+        }, { onlyOnce: true });
+        alert(`👞 Kicked ${result.target}`);
+        return;
+      }
 
-      const statusRef = ref(db, `status/${user.uid}`);
-      update(statusRef, {
-        online: true,
-        username: currentUsername,
-        role: currentRole
+      if (result?.action === "ban") {
+        const userRef = ref(db, "users");
+        onValue(userRef, snapshot => {
+          const users = snapshot.val();
+          for (const uid in users) {
+            if (users[uid].username === result.target) {
+              update(ref(db, `users/${uid}`), { banned: true });
+            }
+          }
+        }, { onlyOnce: true });
+        alert(`❌ Banned ${result.target}`);
+        return;
+      }
+
+      // normal message push
+      const msgRef = ref(db, `channels/${currentChannel}`);
+      push(msgRef, {
+        sender: currentUsername,
+        role: currentRole,
+        text,
+        timestamp: Date.now()
       });
-      onDisconnect(statusRef).update({ online: false });
 
-      renderOnlineUsers();
-      loadChannelMessages();
-
-      channelSelect.addEventListener("change", () => {
-        const selected = channelSelect.value;
-        if (selected === "owner" && currentRole !== "owner") {
-          alert("🚫 Only owners can access this channel.");
-          channelSelect.value = currentChannel;
-          return;
-        }
-        currentChannel = selected;
-        loadChannelMessages();
-      });
-
-      sendBtn.addEventListener("click", () => {
-        const text = messageInput.value.trim();
-        if (text) {
-          push(ref(db, `channels/${currentChannel}`), {
-            uid: user.uid,
-            sender: currentUsername,
-            role: currentRole,
-            text: text,
-            timestamp: Date.now()
-          });
-          messageInput.value = "";
-        }
-      });
+      messageInput.value = "";
     });
 
-    function renderOnlineUsers() {
-      const statusRef = ref(db, "status");
-      onValue(statusRef, snapshot => {
-        const users = snapshot.val();
-        onlineUsersList.innerHTML = "";
-        for (const uid in users) {
-          const entry = users[uid];
-          if (entry.online) {
-            const badge = entry.role === "owner" ? " <span style='color:red;'>[OWNER 👑]</span>" : "";
-            const li = document.createElement("li");
-            li.innerHTML = entry.username + badge;
-            onlineUsersList.appendChild(li);
-          }
-        }
-      });
-    }
-
     function loadChannelMessages() {
-      messagesDiv.innerHTML = "";
-      if (listenerRef) off(listenerRef);
-      listenerRef = ref(db, `channels/${currentChannel}`);
-      onChildAdded(listenerRef, snapshot => {
+      const msgRef = ref(db, `channels/${currentChannel}`);
+      onChildAdded(msgRef, snapshot => {
         const msg = snapshot.val();
-        const wrapper = document.createElement("div");
-        wrapper.classList.add("bubble");
 
-        const senderTag = document.createElement("div");
-        senderTag.classList.add("sender");
-        const badge = msg.role === "owner" ? " <span style='color:red;'>[OWNER 👑]</span>" : "";
+        const wrapper = document.createElement("div");
+        wrapper.classList.add("messageWrapper");
+
+        const senderTag = document.createElement("span");
+        senderTag.classList.add("senderTag");
+        let badge = "";
+        if (msg.role === "owner") badge = " <span style='color:red;'>[OWNER 👑]</span>";
+        if (msg.role === "manager") badge = " <span style='color:blue;'>[MANAGER 🎯]</span>";
         senderTag.innerHTML = msg.sender + badge;
 
-        const textTag = document.createElement("div");
-        textTag.textContent = msg.text;
+        const textTag = document.createElement("span");
+        textTag.classList.add("textTag");
+        textTag.textContent = ": " + msg.text;
 
-        const timeTag = document.createElement("div");
-        timeTag.classList.add("timestamp");
+        const timeTag = document.createElement("span");
+        timeTag.classList.add("timeTag");
         timeTag.textContent = new Date(msg.timestamp).toLocaleString();
 
         wrapper.appendChild(senderTag);
