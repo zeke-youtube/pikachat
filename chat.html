@@ -2,46 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>PikaChaat – Chat</title>
+  <title>PikaChaat</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
       margin: 0;
-      background: linear-gradient(to bottom, #fff176, #ffe0b2);
       display: flex;
       height: 100vh;
+      background: linear-gradient(to bottom, #fff176, #ffe0b2);
     }
-
     #sidebar {
-      width: 320px;
+      width: 280px;
       background: #fff9c4;
+      padding: 16px;
       border-right: 2px solid #fbc02d;
-      padding: 12px;
-      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
-
-    #sidebar h3 {
-      margin-top: 0;
-      font-size: 1.3rem;
+    select, button {
+      padding: 8px;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: none;
     }
-
-    #onlineUsers {
-      font-size: 1.15rem;
-      list-style: none;
-      padding-left: 0;
-    }
-
-    #onlineUsers li {
-      margin-bottom: 10px;
-      font-weight: bold;
-    }
-
     #chatContainer {
       flex: 1;
       display: flex;
       flex-direction: column;
     }
-
     header {
       background: #ffeb3b;
       padding: 12px;
@@ -49,60 +38,28 @@
       font-weight: bold;
       display: flex;
       justify-content: space-between;
-      align-items: center;
     }
-
-    #logoutBtn {
-      background: #f44336;
-      color: white;
-      padding: 6px 12px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.9rem;
-    }
-
-    #channelSelector {
-      padding: 10px;
-      background: #fff9c4;
-      border-bottom: 2px solid #fbc02d;
-    }
-
     #messages {
       flex: 1;
       padding: 10px;
       overflow-y: auto;
       background: #fffde7;
     }
-
     .bubble {
       background: #ffecb3;
-      border-radius: 12px;
-      padding: 8px 14px;
+      padding: 10px 14px;
       margin: 8px 0;
-      max-width: 75%;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      border-radius: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
     }
-
-    .sender {
-      font-weight: bold;
-      margin-bottom: 4px;
-    }
-
-    .timestamp {
-      font-size: 0.75rem;
-      color: #888;
-      text-align: right;
-      margin-top: 4px;
-    }
-
+    .sender { font-weight: bold; margin-bottom: 4px; }
+    .timestamp { font-size: 0.75rem; color: #888; margin-top: 4px; }
     #inputBar {
       display: flex;
       padding: 10px;
       background: #fff9c4;
       border-top: 2px solid #fbc02d;
     }
-
     input[type="text"] {
       flex: 1;
       padding: 10px;
@@ -110,68 +67,52 @@
       border-radius: 8px;
       border: 1px solid #ccc;
     }
-
-    button {
-      margin-left: 10px;
-      padding: 10px;
-      font-size: 1rem;
-      border-radius: 8px;
-      border: none;
-      background: #ffeb3b;
-      cursor: pointer;
-    }
-
     button:hover {
       background: #fdd835;
     }
   </style>
 </head>
 <body>
+
   <div id="sidebar">
-    <h3>🟢 Online Users</h3>
-    <ul id="onlineUsers"></ul>
+    <h3>📺 Channels</h3>
+    <select id="channelSelect"></select>
+    <button id="createChannelBtn">➕ Create Channel</button>
+    <button id="channelSettingsBtn">⚙️ Channel Settings</button>
   </div>
 
   <div id="chatContainer">
     <header>
-      ⚡ PikaChaat Room
-      <button id="logoutBtn">Logout</button>
+      ⚡ PikaChaat
+      <span id="userLabel"></span>
     </header>
-
-    <div id="channelSelector">
-      <label for="channel">Channel:</label>
-      <select id="channel">
-        <option value="chat">Chat 1</option>
-        <option value="chat2">Chat 2</option>
-        <option value="chat2">Chat 3</option>
-        <option value="chat2">memes</option>
-        <option value="chat2">code</option>
-        <option value="chat2">pika-only</option>
-        <option value="owner">Owner Room</option>
-      </select>
-    </div>
-
     <div id="messages"></div>
-
     <div id="inputBar">
-      <input type="text" id="messageInput" placeholder="Type your message...">
+      <input type="text" id="messageInput" placeholder="Say something..." />
       <button id="sendBtn">Send</button>
     </div>
   </div>
 
+  <div id="settingsModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
+    background:#fff3cd; padding:20px; border:2px solid #fbc02d; border-radius:10px; z-index:1000;">
+    <h3>📋 Channel Info</h3>
+    <p><b>Name:</b> <span id="modalName"></span></p>
+    <p><b>Description:</b> <span id="modalDesc"></span></p>
+    <p><b>Created by:</b> <span id="modalOwner"></span></p>
+    <p><b>Bot Active:</b> <span id="modalBot"></span></p>
+    <button onclick="document.getElementById('settingsModal').style.display='none'">Close</button>
+  </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
     import {
       getDatabase,
       ref,
+      set,
       push,
       onChildAdded,
-      get,
-      update,
-      onDisconnect,
-      onValue,
-      off
+      onValue
     } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 
     const firebaseConfig = {
@@ -188,116 +129,113 @@
     const auth = getAuth(app);
     const db = getDatabase(app);
 
+    const channelSelect = document.getElementById("channelSelect");
     const messagesDiv = document.getElementById("messages");
     const sendBtn = document.getElementById("sendBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
     const messageInput = document.getElementById("messageInput");
-    const onlineUsersList = document.getElementById("onlineUsers");
-    const channelSelect = document.getElementById("channel");
+    const userLabel = document.getElementById("userLabel");
+    const createChannelBtn = document.getElementById("createChannelBtn");
+    const settingsBtn = document.getElementById("channelSettingsBtn");
+    const modal = document.getElementById("settingsModal");
 
+    let currentChannel = "general";
     let currentUsername = null;
-    let currentRole = "user";
-    let currentChannel = "chat";
-    let listenerRef = null;
+    let currentUID = null;
 
-    onAuthStateChanged(auth, async user => {
+    const bannedWords = ["4r5e", "5h1t", "5hit", "a55", "anal", "anus", "ar5e", "arrse", "arse", "ass", "ass-fucker", "asses", "assfucker", "assfukka", "asshole", "assholes", "asswhole", "a_s_s", "b!tch", "b00bs", "b17ch", "b1tch", "ballbag", "balls", "ballsack", "bastard", "beastial", "beastiality", "bellend", "bestial", "bestiality", "bi+ch", "biatch", "bitch", "bitcher", "bitchers", "bitches", "bitchin", "bitching", "bloody", "blow job", "blowjob", "blowjobs", "boiolas", "bollock", "bollok", "boner", "boob", "boobs", "booobs", "boooobs", "booooobs", "booooooobs", "breasts", "buceta", "bugger", "bum", "bunny fucker", "butt", "butthole", "buttmuch", "buttplug", "c0ck", "c0cksucker", "carpet muncher", "cawk", "chink", "cipa", "cl1t", "clit", "clitoris", "clits", "cnut", "cock", "cock-sucker", "cockface", "cockhead", "cockmunch", "cockmuncher", "cocks", "cocksuck", "cocksucked", "cocksucker", "cocksucking", "cocksucks", "cocksuka", "cocksukka", "cok", "cokmuncher", "coksucka", "coon", "cox", "crap", "cum", "cummer", "cumming", "cums", "cumshot", "cunilingus", "cunillingus", "cunnilingus", "cunt", "cuntlick", "cuntlicker", "cuntlicking", "cunts", "cyalis", "cyberfuc", "cyberfuck", "cyberfucked", "cyberfucker", "cyberfuckers", "cyberfucking", "d1ck", "damn", "dick", "dickhead", "dildo", "dildos", "dink", "dinks", "dirsa", "dlck", "dog-fucker", "doggin", "dogging", "donkeyribber", "doosh", "duche", "dyke", "ejaculate", "ejaculated", "ejaculates", "ejaculating", "ejaculatings", "ejaculation", "ejakulate", "f u c k", "f u c k e r", "f4nny", "fag", "fagging", "faggitt", "faggot", "faggs", "fagot", "fagots", "fags", "fanny", "fannyflaps", "fannyfucker", "fanyy", "fatass", "fcuk", "fcuker", "fcuking", "feck", "fecker", "felching", "fellate", "fellatio", "fingerfuck", "fingerfucked", "fingerfucker", "fingerfuckers", "fingerfucking", "fingerfucks", "fistfuck", "fistfucked", "fistfucker", "fistfuckers", "fistfucking", "fistfuckings", "fistfucks", "flange", "fook", "fooker", "fuck", "fucka", "fucked", "fucker", "fuckers", "fuckhead", "fuckheads", "fuckin", "fucking", "fuckings", "fuckingshitmotherfucker", "fuckme", "fucks", "fuckwhit", "fuckwit", "fudge packer", "fudgepacker", "fuk", "fuker", "fukker", "fukkin", "fuks", "fukwhit", "fukwit", "fux", "fux0r", "f_u_c_k", "gangbang", "gangbanged", "gangbangs", "gaylord", "gaysex", "goatse", "God", "god-dam", "god-damned", "goddamn", "goddamned", "hardcoresex", "hell", "heshe", "hoar", "hoare", "hoer", "homo", "hore", "horniest", "horny", "hotsex", "jack-off", "jackoff", "jap", "jerk-off", "jism", "jiz", "jizm", "jizz", "kawk", "knob", "knobead", "knobed", "knobend", "knobhead", "knobjocky", "knobjokey", "kock", "kondum", "kondums", "kum", "kummer", "kumming", "kums", "kunilingus", "l3i+ch", "l3itch", "labia", "lust", "lusting", "m0f0", "m0fo", "m45terbate", "ma5terb8", "ma5terbate", "masochist", "master-bate", "masterb8", "masterbat*", "masterbat3", "masterbate", "masterbation", "masterbations", "masturbate", "mo-fo", "mof0", "mofo", "mothafuck", "mothafucka", "mothafuckas", "mothafuckaz", "mothafucked", "mothafucker", "mothafuckers", "mothafuckin", "mothafucking", "mothafuckings", "mothafucks", "mother fucker", "motherfuck", "motherfucked", "motherfucker", "motherfuckers", "motherfuckin", "motherfucking", "motherfuckings", "motherfuckka", "motherfucks", "muff", "mutha", "muthafecker", "muthafuckker", "muther", "mutherfucker", "n1gga", "n1gger", "nazi", "nigg3r", "nigg4h", "nigga", "niggah", "niggas", "niggaz", "nigger", "niggers", "nob", "nob jokey", "nobhead", "nobjocky", "nobjokey", "numbnuts", "nutsack", "orgasim", "orgasims", "orgasm", "orgasms", "p0rn", "pawn", "pecker", "penis", "penisfucker", "phonesex", "phuck", "phuk", "phuked", "phuking", "phukked", "phukking", "phuks", "phuq", "pigfucker", "pimpis", "piss", "pissed", "pisser", "pissers", "pisses", "pissflaps", "pissin", "pissing", "pissoff", "poop", "porn", "porno", "pornography", "pornos", "prick", "pricks", "pron", "pube", "pusse", "pussi", "pussies", "pussy", "pussys", "rectum", "retard", "rimjaw", "rimming", "s hit", "s.o.b.", "sadist", "schlong", "screwing", "scroat", "scrote", "scrotum", "semen", "sex", "sh!+", "sh!t", "sh1t", "shag", "shagger", "shaggin", "shagging", "shemale", "shi+", "shit", "shitdick", "shite", "shited", "shitey", "shitfuck", "shitfull", "shithead", "shiting", "shitings", "shits", "shitted", "shitter", "shitters", "shitting", "shittings", "shitty", "skank", "slut", "sluts", "smegma", "smut", "snatch", "son-of-a-bitch", "spac", "spunk", "s_h_i_t", "t1tt1e5", "t1tties", "teets", "teez", "testical", "testicle", "tit", "titfuck", "tits", "titt", "tittie5", "tittiefucker", "titties", "tittyfuck", "tittywank", "titwank", "tosser", "turd", "tw4t", "twat", "twathead", "twatty", "twunt", "twunter", "v14gra", "v1gra", "vagina", "viagra", "vulva", "w00se", "wang", "wank", "wanker", "wanky", "whoar", "whore", "willies", "willy", "xrated", "xxx"];
+
+    signInAnonymously(auth);
+    onAuthStateChanged(auth, user => {
       if (!user) {
-        alert("🚫 Not logged in. Redirecting...");
-        window.location.href = "email_login.html";
+        alert("🚫 Not logged in.");
         return;
       }
+      currentUID = user.uid;
+      currentUsername = `anon_${user.uid.slice(0,5)}`;
+      userLabel.textContent = currentUsername;
+      loadChannels();
+    });
 
-      const userRef = ref(db, `users/${user.uid}`);
-      const snapshot = await get(userRef);
-      const userInfo = snapshot.val();
-
-      currentUsername = userInfo?.username || user.email;
-      currentRole = (user.email === "zheng.hong.ze.tw@gmail.com" || user.email === "i230206@nehs.tc.edu.tw")
-        ? "owner"
-        : (userInfo?.role || "user");
-
-      const statusRef = ref(db, `status/${user.uid}`);
-      update(statusRef, {
-        online: true,
-        username: currentUsername,
-        role: currentRole
+    function loadChannels() {
+      onValue(ref(db, "channels"), snap => {
+        const chans = snap.val() || {};
+        channelSelect.innerHTML = "";
+        for (const cname in chans) {
+          const opt = document.createElement("option");
+          opt.value = cname;
+          opt.textContent = "#" + cname;
+          channelSelect.appendChild(opt);
+        }
+        currentChannel = channelSelect.value;
+        loadMessages(currentChannel);
       });
-      onDisconnect(statusRef).update({ online: false });
+    }
 
-      renderOnlineUsers();
-      loadChannelMessages();
+    function loadMessages(channelId) {
+      messagesDiv.innerHTML = "";
+      const path = ref(db, `channels/${channelId}/messages`);
+      onChildAdded(path, snap => {
+        const msg = snap.val();
+        const wrap = document.createElement("div");
+        wrap.classList.add("bubble");
+        wrap.innerHTML = `<div class="sender">${msg.sender}</div>
+                          <div>${msg.text}</div>
+                          <div class="timestamp">${new Date(msg.timestamp).toLocaleString()}</div>`;
+        messagesDiv.appendChild(wrap);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      });
+    }
 
-      channelSelect.addEventListener("change", () => {
-        const selected = channelSelect.value;
-        if (selected === "owner" && currentRole !== "owner") {
-          alert("🚫 Only owners can access this channel.");
-          channelSelect.value = currentChannel;
+    sendBtn.addEventListener("click", () => {
+      const text = messageInput.value.trim();
+      if (!text) return;
+      for (let word of bannedWords) {
+        if (text.toLowerCase().includes(word)) {
+          alert("🚫 Message contains a banned word.");
           return;
         }
-        currentChannel = selected;
-        loadChannelMessages();
+      }
+      const msgRef = ref(db, `channels/${currentChannel}/messages`);
+      push(msgRef, {
+        sender: currentUsername,
+        uid: currentUID,
+        text,
+        timestamp: Date.now()
       });
+      messageInput.value = "";
+    });
 
-      sendBtn.addEventListener("click", () => {
-        const text = messageInput.value.trim();
-        if (text) {
-          push(ref(db, `channels/${currentChannel}`), {
-            uid: user.uid,
-            sender: currentUsername,
-            role: currentRole,
-            text: text,
-            timestamp: Date.now()
-          });
-          messageInput.value = "";
+    channelSelect.addEventListener("change", () => {
+      currentChannel = channelSelect.value;
+      loadMessages(currentChannel);
+    });
+
+    createChannelBtn.addEventListener("click", () => {
+      const name = prompt("Channel name:");
+      if (!name) return;
+      const clean = name.toLowerCase().replace(/\s+/g, "-");
+      const desc = prompt("Description for channel:") || "";
+      set(ref(db, `channels/${clean}`), {
+        meta: {
+          createdBy: currentUsername,
+          description: desc,
+          botEnabled: true,
+          access: "everyone"
         }
       });
     });
 
-    function renderOnlineUsers() {
-      const statusRef = ref(db, "status");
-      onValue(statusRef, snapshot => {
-        const users = snapshot.val();
-        onlineUsersList.innerHTML = "";
-        for (const uid in users) {
-          const entry = users[uid];
-          if (entry.online) {
-            const badge = entry.role === "owner" ? " <span style='color:red;'>[OWNER 👑]</span>" : "";
-            const li = document.createElement("li");
-            li.innerHTML = entry.username + badge;
-            onlineUsersList.appendChild(li);
-          }
-        }
-      });
-    }
-
-    function loadChannelMessages() {
-      messagesDiv.innerHTML = "";
-      if (listenerRef) off(listenerRef);
-      listenerRef = ref(db, `channels/${currentChannel}`);
-      onChildAdded(listenerRef, snapshot => {
-        const msg = snapshot.val();
-        const wrapper = document.createElement("div");
-        wrapper.classList.add("bubble");
-
-        const senderTag = document.createElement("div");
-        senderTag.classList.add("sender");
-        const badge = msg.role === "owner" ? " <span style='color:red;'>[OWNER 👑]</span>" : "";
-        senderTag.innerHTML = msg.sender + badge;
-
-        const textTag = document.createElement("div");
-        textTag.textContent = msg.text;
-
-        const timeTag = document.createElement("div");
-        timeTag.classList.add("timestamp");
-        timeTag.textContent = new Date(msg.timestamp).toLocaleString();
-
-        wrapper.appendChild(senderTag);
-        wrapper.appendChild(textTag);
-        wrapper.appendChild(timeTag);
-        messagesDiv.appendChild(wrapper);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-      });
-    }
+    settingsBtn.addEventListener("click", () => {
+      const metaRef = ref(db, `channels/${channelSelect.value}/meta`);
+      onValue(metaRef, snap => {
+        const data = snap.val();
+        document.getElementById("modalName").textContent = channelSelect.value;
+        document.getElementById("modalDesc").textContent = data?.description || "None";
+        document.getElementById("modalOwner").textContent = data?.createdBy || "Unknown";
+        document.getElementById("modalBot").textContent = data?.botEnabled ? "✅ Yes" : "❌ No";
+        modal.style.display = "block";
+      }, { onlyOnce: true });
+    });
   </script>
 </body>
 </html>
