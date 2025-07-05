@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PikaChaat – Channels</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      display: flex;
+      height: 100vh;
+      background: linear-gradient(to bottom, #fff176, #ffe0b2);
+    }
+    #sidebar {
+      width: 280px;
+      background: #fff9c4;
+      padding: 16px;
+      border-right: 2px solid #fbc02d;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    select, button {
+      padding: 8px;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: none;
+    }
+    #chatContainer {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: #ffeb3b;
+      padding: 12px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+    }
+    #messages {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      background: #fffde7;
+    }
+    .bubble {
+      background: #ffecb3;
+      padding: 10px 14px;
+      margin: 8px 0;
+      border-radius: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+    .sender { font-weight: bold; margin-bottom: 4px; }
+    .timestamp { font-size: 0.75rem; color: #888; margin-top: 4px; }
+    #inputBar {
+      display: flex;
+      padding: 10px;
+      background: #fff9c4;
+      border-top: 2px solid #fbc02d;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button:hover {
+      background: #fdd835;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="sidebar">
+    <h3>📺 Channels</h3>
+    <select id="channelSelect"></select>
+    <button id="createChannelBtn">➕ Create Channel</button>
+    <button id="channelSettingsBtn">⚙️ Channel Settings</button>
+  </div>
+
+  <div id="chatContainer">
+    <header>
+      ⚡ PikaChaat
+      <span id="userLabel"></span>
+    </header>
+    <div id="messages"></div>
+    <div id="inputBar">
+      <input type="text" id="messageInput" placeholder="Say something..." />
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+
+  <div id="settingsModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
+    background:#fff3cd; padding:20px; border:2px solid #fbc02d; border-radius:10px; z-index:1000;">
+    <h3>📋 Channel Info</h3>
+    <p><b>Name:</b> <span id="modalName"></span></p>
+    <p><b>Description:</b> <span id="modalDesc"></span></p>
+    <p><b>Created by:</b> <span id="modalOwner"></span></p>
+    <p><b>Bot Active:</b> <span id="modalBot"></span></p>
+    <button onclick="document.getElementById('settingsModal').style.display='none'">Close</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import {
+      getDatabase,
+      ref,
+      set,
+      push,
+      onChildAdded,
+      onValue
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyByNBANQIZOunz4rtbOyb2H5lF9vtDavWs",
+      authDomain: "pikachat-42272.firebaseapp.com",
+      databaseURL: "https://pikachat-42272-default-rtdb.firebaseio.com/",
+      projectId: "pikachat-42272",
+      storageBucket: "pikachat-42272.appspot.com",
+      messagingSenderId: "762656745037",
+      appId: "1:762656745037:web:8afe6f98e1603cdc6c5e04"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    const channelSelect = document.getElementById("channelSelect");
+    const messagesDiv = document.getElementById("messages");
+    const sendBtn = document.getElementById("sendBtn");
+    const messageInput = document.getElementById("messageInput");
+    const userLabel = document.getElementById("userLabel");
+    const createChannelBtn = document.getElementById("createChannelBtn");
+    const settingsBtn = document.getElementById("channelSettingsBtn");
+    const modal = document.getElementById("settingsModal");
+
+    let currentChannel = "general";
+    let currentUsername = null;
+    let currentUID = null;
+
+    const bannedWords = ["noob", "badword1", "badword2"];
+
+    signInAnonymously(auth);
+    onAuthStateChanged(auth, user => {
+      if (!user) {
+        alert("🚫 Not logged in.");
+        return;
+      }
+      currentUID = user.uid;
+      currentUsername = `anon_${user.uid.slice(0,5)}`;
+      userLabel.textContent = currentUsername;
+      loadChannels();
+    });
+
+    function loadChannels() {
+      onValue(ref(db, "channels"), snap => {
+        const chans = snap.val() || {};
+        channelSelect.innerHTML = "";
+        for (const cname in chans) {
+          const opt = document.createElement("option");
+          opt.value = cname;
+          opt.textContent = "#" + cname;
+          channelSelect.appendChild(opt);
+        }
+        currentChannel = channelSelect.value;
+        loadMessages(currentChannel);
+      });
+    }
+
+    function loadMessages(channelId) {
+      messagesDiv.innerHTML = "";
+      const path = ref(db, `channels/${channelId}/messages`);
+      onChildAdded(path, snap => {
+        const msg = snap.val();
+        const wrap = document.createElement("div");
+        wrap.classList.add("bubble");
+        wrap.innerHTML = `<div class="sender">${msg.sender}</div>
+                          <div>${msg.text}</div>
+                          <div class="timestamp">${new Date(msg.timestamp).toLocaleString()}</div>`;
+        messagesDiv.appendChild(wrap);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      });
+    }
+
+    sendBtn.addEventListener("click", () => {
+      const text = messageInput.value.trim();
+      if (!text) return;
+      for (let word of bannedWords) {
+        if (text.toLowerCase().includes(word)) {
+          alert("🚫 Message contains a banned word.");
+          return;
+        }
+      }
+      const msgRef = ref(db, `channels/${currentChannel}/messages`);
+      push(msgRef, {
+        sender: currentUsername,
+        uid: currentUID,
+        text,
+        timestamp: Date.now()
+      });
+      messageInput.value = "";
+    });
+
+    channelSelect.addEventListener("change", () => {
+      currentChannel = channelSelect.value;
+      loadMessages(currentChannel);
+    });
+
+    createChannelBtn.addEventListener("click", () => {
+      const name = prompt("Channel name:");
+      if (!name) return;
+      const clean = name.toLowerCase().replace(/\s+/g, "-");
+      const desc = prompt("Description for channel:") || "";
+      set(ref(db, `channels/${clean}`), {
+        meta: {
+          createdBy: currentUsername,
+          description: desc,
+          botEnabled: true,
+          access: "everyone"
+        }
+      });
+    });
+
+    settingsBtn.addEventListener("click", () => {
+      const metaRef = ref(db, `channels/${channelSelect.value}/meta`);
+      onValue(metaRef, snap => {
+        const data = snap.val();
+        document.getElementById("modalName").textContent = channelSelect.value;
+        document.getElementById("modalDesc").textContent = data?.description || "None";
+        document.getElementById("modalOwner").textContent = data?.createdBy || "Unknown";
+        document.getElementById("modalBot").textContent = data?.botEnabled ? "✅ Yes" : "❌ No";
+        modal.style.display = "block";
+      }, { onlyOnce: true });
+    });
+  </script>
+</body>
+</html>
