@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>PikaChaat – Channels</title>
+  <title>PikaChaat - chat</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -142,7 +142,7 @@
     let currentUsername = null;
     let currentUID = null;
 
-    const bannedWords = ["noob", "badword1", "badword2"];
+    const bannedWords = ["noob", "fuck", "shit", "suck", "nuke", "frick"];
 
     signInAnonymously(auth);
     onAuthStateChanged(auth, user => {
@@ -231,7 +231,7 @@
         const data = snap.val();
         document.getElementById("modalName").textContent = channelSelect.value;
         document.getElementById("modalDesc").textContent = data?.description || "None";
-        document.getElementById("modalOwner").textContent = data?.createdBy || "Unknown";
+        document.getElementById("modalOwner").textContent = data?.createdBy || "Server";
         document.getElementById("modalBot").textContent = data?.botEnabled ? "✅ Yes" : "❌ No";
         modal.style.display = "block";
       }, { onlyOnce: true });
